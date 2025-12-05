@@ -40,7 +40,7 @@ The `--windows` flag switches the payload from Unix shell (`echo $((41*271))`) t
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/react2shell-scanner.git
+git clone https://github.com/assetnote/react2shell-scanner.git
 cd react2shell-scanner
 pip install -r requirements.txt
 ```
