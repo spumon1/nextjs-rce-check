@@ -370,13 +370,13 @@ def main():
         epilog="""
 示例:
   扫描网段:
-    %(prog)s -t 192.168.8.0/24
-    %(prog)s -t 192.168.8.0/24 -p 80,443,8080 --fscan-threads 1000
-    %(prog)s -t 192.168.8.0/24 --no-ping  # 启用 ping 发现存活主机
+    %(prog)s -t 192.168.1.0/24
+    %(prog)s -t 192.168.1.0/24 -p 80,443,8080 --fscan-threads 1000
+    %(prog)s -t 192.168.1.0/24 --no-ping  # 启用 ping 发现存活主机
 
   执行 RCE:
-    %(prog)s --rce http://192.168.8.105:5000 --cmd "id"
-    %(prog)s --rce http://192.168.8.105:5000 --shell  # 交互式 shell
+    %(prog)s --rce http://192.168.1.x:5000 --cmd "id"
+    %(prog)s --rce http://192.168.1.x:5000 --shell  # 交互式 shell
         """
     )
 
@@ -384,7 +384,7 @@ def main():
     scan_group = parser.add_argument_group('扫描选项')
     scan_group.add_argument(
         "-t", "--target",
-        help="目标 IP 或 CIDR (如: 192.168.8.0/24)"
+        help="目标 IP 或 CIDR (如: 192.168.1.0/24)"
     )
     scan_group.add_argument(
         "-p", "--ports",
